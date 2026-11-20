@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "macros.html" import category, status %}
+{% block title %}Søg · OpenKirkebog{% endblock %}
+{% block content %}
+<header class="intro">
+  <h1>Søg i kirkebøgerne</h1>
+  <p>Søg på navn, sogn, år, hændelse, erhverv, bopæl eller ord i transskriptionen.</p>
+</header>
+<form class="panel search-form" method="get" action="/search" hx-get="/search" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true">
+  <label>Søgeord <input type="search" name="q" value="{{ q or '' }}" placeholder="Fx Jens Nielsen, København eller 1890"></label>
+  <button class="button primary">Søg</button>
+</form>
+<div id="search-results" aria-live="polite">
+{% if q or results %}
+<section aria-labelledby="results-title">
+  <div class="section-header">
+    <h2 id="results-title">Søgeresultater</h2>
+    {% if results %}
+    <div class="actions">
+      <a class="button secondary" href="/export/json?q={{ q | urlencode }}">JSON</a>
+      <a class="button secondary" href="/export/csv?q={{ q | urlencode }}">CSV</a>
+    </div>
+    {% endif %}
+  </div>
+  <ul class="records">
+  {% for item in results %}
+    {% set data = item.entry.data %}
+    <li class="record search-record">
+      <div class="record-body">
+        <h3><a href="/pages/{{ item.page.id }}#entry-{{ item.entry.id }}">
+        {%- for person in data.persons if person.name_original or person.name_normalized -%}
+          {{ person.name_original or person.name_normalized }}{% if person.name_uncertain %} (usikkert navn){% endif %}{% if not loop.last %}, {% endif %}
+        {%- else -%}
+          {{ category(data.event_type) }}{% if data.entry_number %} {{ data.entry_number }}{% endif %}
+        {%- endfor -%}
+        </a></h3>
+        <p>{{ item.source.parish }}{% if item.source.reference %} · {{ item.source.reference }}{% endif %} · {{ item.page.filename }}</p>
+        <p>{{ category(data.event_type) }}{% if data.event_date_original or data.event_date %} · {{ data.event_date_original or data.event_date }}{% if data.date_uncertain %} (usikker dato){% endif %}{% endif %}</p>
+        {% if item.entry.raw_text %}<p class="excerpt">{{ item.entry.raw_text | truncate(240) }}</p>{% endif %}
+      </div>
+      <div>{{ status(item.entry.status) }}</div>
+    </li>
+  {% else %}
+    <li class="empty">Ingen indførsler matcher søgningen.</li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+</div>
+{% endblock %}

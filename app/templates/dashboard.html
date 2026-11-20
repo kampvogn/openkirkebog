@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Oversigt · OpenKirkebog{% endblock %}
+{% block content %}
+<section class="intro intro-home">
+  <h1>Danske kirkebøger</h1>
+  <p>Importér skannede kirkebogssider, gennemgå transskriptioner, og find indførsler med link til den originale side.</p>
+  <div class="actions">
+    <a class="button primary" href="/sources">Gennemse kirkebøger</a>
+    <a class="button secondary" href="/search">Søg i indførsler</a>
+  </div>
+</section>
+
+<section aria-labelledby="stats-title">
+  <h2 id="stats-title">Samlingen i tal</h2>
+  <dl class="metrics">
+    {% for field, label in [('sources', 'Kilder'), ('pages', 'Importerede sider'), ('processed', 'Behandlede sider'), ('entries', 'Indførsler'), ('awaiting', 'Afventer gennemgang'), ('errors', 'Behandlingsfejl')] %}
+    <div class="metric"><dt>{{ label }}</dt><dd>{{ counts[field] }}</dd></div>
+    {% endfor %}
+  </dl>
+</section>
+{% endblock %}

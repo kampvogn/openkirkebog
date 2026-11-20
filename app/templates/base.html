@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}OpenKirkebog{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false,"historyCacheSize":0,"includeIndicatorStyles":false,"selfRequestsOnly":true}'>
+  <script defer src="/static/vendor/htmx.min.js"></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main">Spring til indhold</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/">OpenKirkebog</a>
+      <nav aria-label="Hovedmenu">
+        {% for url, text, active in [
+          ('/', 'Oversigt', request.url.path == '/'),
+          ('/sources', 'Kirkebøger', request.url.path.startswith('/sources') or request.url.path.startswith('/pages')),
+          ('/search', 'Søg', request.url.path.startswith('/search')),
+          ('/operations', 'Drift', request.url.path.startswith('/operations'))
+        ] %}
+          <a href="{{ url }}"{% if active %} aria-current="page"{% endif %}>{{ text }}</a>
+        {% endfor %}
+      </nav>
+    </div>
+  </header>
+  <main id="main" tabindex="-1" class="shell{% block shell_class %}{% endblock %}">
+    {% if error %}<p class="message error" role="alert">{{ error }}</p>{% endif %}
+    {% if notice %}<p class="message" role="status">{{ notice }}</p>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

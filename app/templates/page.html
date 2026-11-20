@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% from "macros.html" import category, source_period, stage, status %}
+{% block title %}{{ page.filename }} · OpenKirkebog{% endblock %}
+{% block shell_class %} shell-wide{% endblock %}
+{% block head %}<script defer src="/static/viewer.js"></script>{% endblock %}
+{% block content %}
+<a class="breadcrumb" href="/sources/{{ source.id }}">{{ source.parish }}</a>
+<header class="intro page-intro">
+  <h1>{{ page.filename }}</h1>
+  {% set has_period = source.start_year or source.end_year %}
+  {% if source.reference or has_period or source.url %}
+  <p>
+    {{ source.reference or '' }}{% if source.reference and has_period %} · {% endif %}{{ source_period(source) }}
+    {% if source.url %}{% if source.reference or has_period %} · {% endif %}<a href="{{ source.url }}" rel="noreferrer noopener" target="_blank">Original kilde</a>{% endif %}
+  </p>
+  {% endif %}
+</header>
+
+<div class="viewer-layout">
+  <section class="panel viewer" aria-labelledby="scan-title">
+    <div class="viewer-toolbar">
+      <h2 id="scan-title">Original skanning</h2>
+      <div class="actions" data-viewer-controls hidden>
+        <button class="button secondary" type="button" data-zoom="out" aria-label="Zoom ud" title="Zoom ud">−</button>
+        <button class="button secondary" type="button" data-zoom="in" aria-label="Zoom ind" title="Zoom ind">+</button>
+        <button class="button secondary" type="button" data-zoom="fit">Tilpas bredde</button>
+      </div>
+    </div>
+    <div class="scan-viewport" tabindex="0" aria-label="Skannet side. Brug piletasterne for at flytte billedet.">
+      <div class="scan-sheet">
+        <img src="/pages/{{ page.id }}/image" alt="Original skanning af {{ page.filename }}" width="{{ page.width }}" height="{{ page.height }}" draggable="false">
+        {% for entry in entries if entry.bbox %}
+          {% set bbox = entry.bbox %}
+          <a class="region" href="#entry-{{ entry.id }}" draggable="false" hidden
+            data-x="{{ bbox.x }}" data-y="{{ bbox.y }}"
+            data-width="{{ bbox.width }}" data-height="{{ bbox.height }}"
+            aria-label="Find indførsel {{ entry.data.entry_number or entry.data.row_index + 1 }} i teksten"></a>
+        {% endfor %}
+        {% if transcription and not entries %}
+        {% for row in transcription.rows %}
+          {% if row.bbox %}
+          <a class="region" href="#row-{{ loop.index }}" draggable="false" hidden
+            data-x="{{ row.bbox.x }}" data-y="{{ row.bbox.y }}"
+            data-width="{{ row.bbox.width }}" data-height="{{ row.bbox.height }}"
+            aria-label="Find række {{ loop.index }} i transskriptionen"></a>
+          {% endif %}
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+    <div class="viewer-footer"><a href="/pages/{{ page.id }}/original">Download originalfil</a></div>
+  </section>
+
+  <div class="stack workspace">
+    <section aria-labelledby="entries-title">
+      <div class="section-header"><h2 id="entries-title">Indførsler</h2></div>
+      {% if extractions %}
+      <div class="panel stack version-switcher">
+        <form class="inline-form" action="/pages/{{ page.id }}#entries-title" method="get">
+          {% if selected_transcription_id and selected_transcription_id != transcription_id %}<input type="hidden" name="transcription_id" value="{{ selected_transcription_id }}">{% endif %}
+          <label>Udtræksversion
+            <select name="extraction_id">
+              {% for version in extractions %}
+              <option value="{{ version.id }}"{% if version.id == selected_extraction_id %} selected{% endif %}>#{{ version.id }}{% if version.created_at %} · {{ version.created_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}{% if version.id == active_extraction_id %} · Aktiv i søgning{% endif %}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button class="button secondary">Vis</button>
+        </form>
+        {% if extraction_transcription_id %}
+        <p class="metadata"><a href="/pages/{{ page.id }}?extraction_id={{ selected_extraction_id }}&amp;transcription_id={{ extraction_transcription_id }}#transcription-title">Transskriptionsversion #{{ extraction_transcription_id }} bag udtrækket</a></p>
+        {% endif %}
+        {% if selected_extraction_id and selected_extraction_id != active_extraction_id %}
+        <form class="stack" action="/pages/{{ page.id }}/extraction" method="post">
+          <input type="hidden" name="extraction_id" value="{{ selected_extraction_id }}">
+          <p>Dette udtræk er ikke aktivt i søgningen.</p>
+          <div><button class="button secondary">Gør aktivt i søgning</button></div>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <div class="stack">
+      {% for entry in entries %}
+        {% set data = entry.data %}
+        <article id="entry-{{ entry.id }}" class="panel entry">
+          <header class="section-header">
+            <h3>{{ category(data.event_type) }}{% if data.entry_number %} · Nr. {{ data.entry_number }}{% else %} · Række {{ data.row_index + 1 }}{% endif %}</h3>
+            <div class="actions">{{ status(entry.status) }}{% if entry.excluded %}{{ status('excluded') }}{% endif %}</div>
+          </header>
+          {% if entry.bbox %}<a class="region-link" href="#scan-title" data-show-region="entry-{{ entry.id }}" hidden>Vis område i skanningen</a>{% endif %}
+          {% if data.event_date_original or data.event_date %}
+          <p class="metadata">
+            {% if data.event_date_original %}Dato i kilden <strong>{{ data.event_date_original }}</strong>{% endif %}
+            {% if data.event_date_original and data.event_date %} · {% endif %}
+            {% if data.event_date %}Normaliseret dato <strong>{{ data.event_date }}</strong>{% endif %}
+            {% if data.date_uncertain %} (usikker){% endif %}
+          </p>
+          {% endif %}
+          {% for person in data.persons %}
+            {% if loop.first %}<ul class="people">{% endif %}
+            <li>
+              <strong>{{ person.name_original or person.name_normalized or 'Ukendt navn' }}</strong>{% if person.name_uncertain %} (usikkert navn){% endif %}
+              {% if person.name_normalized and person.name_normalized != person.name_original %} · Normaliseret navn {{ person.name_normalized }}{% endif %}
+              {% if person.role %} · {{ person.role }}{% endif %}{% if person.occupation %} · {{ person.occupation }}{% endif %}{% if person.residence %} · {{ person.residence }}{% endif %}
+              {% if person.birth_date_original or person.birth_date %} · Født {{ person.birth_date_original or person.birth_date }}{% if person.birth_date_uncertain %} (usikker dato){% endif %}{% endif %}
+            </li>
+            {% if loop.last %}</ul>{% endif %}
+          {% endfor %}
+          {% if entry.raw_text %}<blockquote class="transcript">{{ entry.raw_text }}</blockquote>{% endif %}
+          {% if entry.uncertain_readings %}
+          <p class="uncertain">Usikre læsninger · {{ entry.uncertain_readings | join(', ') }}</p>
+          {% endif %}
+          {% if data.relationships or data.attributes %}
+          <details class="fold">
+            <summary>Relationer og øvrige oplysninger</summary>
+            {% if data.relationships %}
+            <ul class="people">
+              {% for relationship in data.relationships %}
+              {% set subject = data.persons[relationship.subject_index] %}
+              {% set object = data.persons[relationship.object_index] %}
+              <li>{{ subject.name_original or subject.name_normalized or ('Person ' ~ (relationship.subject_index + 1)) }} · {{ relationship.relationship_type }} · {{ object.name_original or object.name_normalized or ('Person ' ~ (relationship.object_index + 1)) }}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            {% if data.attributes %}
+            <dl class="details-list">
+              {% for label, value in data.attributes.items() %}
+              <dt>{{ label }}</dt><dd>{{ value if value is not none else 'Ukendt' }}</dd>
+              {% endfor %}
+            </dl>
+            {% endif %}
+          </details>
+          {% endif %}
+          <details class="fold">
+            <summary>Gennemgå indførsel</summary>
+            <form class="stack review-form" action="/entries/{{ entry.id }}/review" method="post">
+              <input type="hidden" name="revision" value="{{ entry.revision }}">
+              <label>Transskription <textarea name="raw_text" rows="4" required>{{ entry.raw_text or '' }}</textarea></label>
+              <label>Usikre læsninger (én pr. linje) <textarea name="uncertain_readings" rows="2">{{ entry.uncertain_readings | join('\n') }}</textarea></label>
+              {% for person in data.persons %}
+              <fieldset>
+                <legend>Person {{ loop.index }}{% if person.role %} · {{ person.role }}{% endif %}</legend>
+                <div class="field-grid">
+                  <label>Navn i kilden <input name="person_original" value="{{ person.name_original or '' }}"></label>
+                  <label>Normaliseret navn <input name="person_normalized" value="{{ person.name_normalized or '' }}"></label>
+                </div>
+                <label class="check"><input type="checkbox" name="person_uncertain" value="{{ loop.index0 }}"{% if person.name_uncertain %} checked{% endif %}> Navnet er usikkert</label>
+              </fieldset>
+              {% endfor %}
+              <div class="field-grid">
+                <label>Dato i kilden <input name="event_date_original" value="{{ data.event_date_original or '' }}"></label>
+                <label>Normaliseret dato <input name="event_date" value="{{ data.event_date or '' }}" placeholder="ÅÅÅÅ, ÅÅÅÅ-MM eller ÅÅÅÅ-MM-DD" pattern="[0-9]{4}(-[0-9]{2}){0,2}"></label>
+              </div>
+              <div class="field-grid">
+                <label>Gennemgangsstatus
+                  <select name="status">
+                    {% for value, label in [('unreviewed', 'Ikke gennemgået'), ('reviewed', 'Gennemgået'), ('verified', 'Verificeret')] %}
+                    <option value="{{ value }}"{% if entry.status == value %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+              </div>
+              <div class="stack checkbox-group">
+                <label class="check"><input type="checkbox" name="date_uncertain" value="true"{% if data.date_uncertain %} checked{% endif %}> Datoen er usikker</label>
+                <label class="check"><input type="checkbox" name="excluded" value="true"{% if entry.excluded %} checked{% endif %}> Skjul i søgning og eksport</label>
+              </div>
+              <div><button class="button primary">Gem gennemgang</button></div>
+            </form>
+          </details>
+        </article>
+      {% else %}
+        <p class="empty">Der er ingen indførsler for denne side endnu.</p>
+      {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel stack" aria-labelledby="transcription-title">
+      <h2 id="transcription-title">Sidens transskription</h2>
+      {% if version_options %}
+      <form class="inline-form" action="/pages/{{ page.id }}#transcription-title" method="get">
+        {% if selected_extraction_id %}<input type="hidden" name="extraction_id" value="{{ selected_extraction_id }}">{% endif %}
+        <label>Transskriptionsversion
+          <select name="transcription_id">
+            {% for version in version_options %}
+            <option value="{{ version.id }}"{% if version.id == selected_transcription_id %} selected{% endif %}>#{{ version.id }} · {{ {'ai':'AI', 'manual':'Manuel rettelse', 'human':'Manuel rettelse'}.get(version.origin, version.origin) }}{% if version.created_at %} · {{ version.created_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}{% if version.id == transcription_id %} · Seneste{% endif %}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button class="button secondary">Vis</button>
+      </form>
+      {% endif %}
+      {% if transcription %}
+      {% set editable = not selected_transcription_id or selected_transcription_id == transcription_id %}
+      <p class="metadata">{{ category(transcription.category) }}{% if transcription.columns %} · Kolonner {{ transcription.columns | join(', ') }}{% endif %}</p>
+      <form class="stack" action="/pages/{{ page.id }}/transcription" method="post">
+        <input type="hidden" name="transcription_id" value="{{ transcription_id }}">
+        {% for row in transcription.rows %}
+        <fieldset id="row-{{ loop.index }}" class="stack transcription-row">
+          <legend>Række {{ loop.index }}</legend>
+          {% if row.bbox and not entries %}<a class="region-link" href="#scan-title" data-show-region="row-{{ loop.index }}" hidden>Vis område i skanningen</a>{% endif %}
+          {% if row.cells %}
+          <dl class="details-list">
+            {% for column in transcription.columns if column in row.cells %}
+            <dt>{{ column }}</dt>
+            <dd>{{ row.cells[column] if row.cells[column] is not none else 'Ukendt' }}</dd>
+            {% endfor %}
+          </dl>
+          {% endif %}
+          {% if editable %}
+          <label>Transskription <textarea name="raw_text" rows="3" required>{{ row.raw_text or '' }}</textarea></label>
+          <label>Usikre læsninger (én pr. linje) <textarea name="uncertain_readings" rows="2">{{ row.uncertain_readings | join('\n') }}</textarea></label>
+          {% else %}
+          <blockquote class="transcript">{{ row.raw_text or '' }}</blockquote>
+          {% if row.uncertain_readings %}<p class="uncertain">Usikre læsninger · {{ row.uncertain_readings | join(', ') }}</p>{% endif %}
+          {% endif %}
+        </fieldset>
+        {% endfor %}
+        {% if editable and transcription.rows %}<div><button class="button primary">Gem ny version</button></div>{% endif %}
+      </form>
+      {% if not transcription.rows %}<p>Der er ingen transskriberede rækker i denne version.</p>{% endif %}
+      {% else %}
+      <p>Siden er endnu ikke transskriberet.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel stack" aria-labelledby="jobs-title">
+      <h2 id="jobs-title">Behandling</h2>
+      <form class="stack" action="/jobs" method="post">
+        <input type="hidden" name="page_ids" value="{{ page.id }}">
+        {% if selected_transcription_id %}<input type="hidden" name="transcription_id" value="{{ selected_transcription_id }}">{% endif %}
+        <label>Model (valgfrit) <input name="model" placeholder="Standardmodellen bruges som udgangspunkt"></label>
+        <div class="actions">
+          <button class="button primary" name="stage" value="pipeline">Behandl siden</button>
+          {% if can_extract %}<button class="button secondary" name="stage" value="extraction">Kør kun udtræk</button>{% endif %}
+        </div>
+      </form>
+      {% if jobs %}
+      {% set active_jobs = jobs | selectattr('state', 'in', ['pending', 'processing']) | list %}
+      <div class="stack" id="jobs-list"{% if active_jobs %} hx-get="/pages/{{ page.id }}" hx-trigger="every 4s" hx-select="#jobs-list" hx-swap="outerHTML"{% endif %}>
+      <h3>Opgaver</h3>
+      <ul class="records compact">
+      {% for job in jobs %}
+        <li class="record">
+          <div class="record-body">
+            <strong>#{{ job.id }} · {{ stage(job.stage) }}</strong>
+            <p>Forsøg {{ job.attempts }}</p>
+            {% if job.error %}<p class="failure">{{ job.error }}</p>{% endif %}
+          </div>
+          <div class="actions">
+            {{ status(job.state) }}
+            {% if job.state == 'pending' %}
+            <form id="cancel-job-{{ job.id }}" hx-preserve action="/jobs/{{ job.id }}/cancel" method="post"><button class="button secondary">Annullér</button></form>
+            {% elif job.state == 'failed' or job.state == 'cancelled' %}
+            <form action="/jobs/{{ job.id }}/retry" method="post"><button class="button secondary">Prøv igen</button></form>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+      </ul>
+      {% if jobs[0].state == 'completed' %}<a href="/pages/{{ page.id }}#entries-title">Vis sidens seneste versioner</a>{% endif %}
+      </div>
+      {% endif %}
+      {% if runs %}
+      <details class="fold">
+        <summary>Behandlingshistorik</summary>
+        <ul class="records compact">
+        {% for run in runs %}
+          <li class="record"><div><strong>#{{ run.id }} · {{ stage(run.stage) }}</strong><p>{{ run.model }} · Prompt {{ run.prompt_version }}</p></div>{{ status(run.status) }}</li>
+        {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+      {% if corrections %}
+      <details class="fold">
+        <summary>Rettelseshistorik</summary>
+        <ul class="records compact">
+        {% for correction in corrections %}
+          <li class="record"><span>#{{ correction.id }}{% if correction.entry_id %} · Indførsel {{ correction.entry_id }}{% endif %}</span><span>{{ correction.created_at.strftime('%Y-%m-%d %H:%M') }}</span></li>
+        {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

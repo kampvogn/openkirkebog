@@ -1,0 +1,61 @@
+{% macro status(name) -%}
+  {% set labels = {
+    'pending': 'I kø', 'processing': 'Behandles', 'completed': 'Afsluttet',
+    'failed': 'Mislykket', 'cancelled': 'Annulleret', 'unreviewed': 'Ikke gennemgået',
+    'reviewed': 'Gennemgået', 'verified': 'Verificeret', 'imported': 'Importeret',
+    'success': 'Afsluttet', 'succeeded': 'Afsluttet', 'running': 'Behandles',
+    'excluded': 'Skjult i søgning'
+  } %}
+  <span class="status status-{{ name }}">{{ labels.get(name, name) }}</span>
+{%- endmacro %}
+
+{% macro category(name) -%}
+  {% set labels = {
+    'birth': 'Fødsel', 'baptism': 'Dåb', 'confirmation': 'Konfirmation',
+    'marriage': 'Vielse', 'death': 'Dødsfald', 'burial': 'Begravelse',
+    'birth/baptism': 'Fødsel og dåb', 'death/burial': 'Dødsfald og begravelse',
+    'mixed': 'Blandet', 'other': 'Andet', 'unknown': 'Ukendt'
+  } %}
+  {{ labels.get(name, name) if name else 'Ukendt' }}
+{%- endmacro %}
+
+{% macro stage(name) -%}
+  {{ {'pipeline': 'Begge trin', 'transcription': 'Transskription', 'extraction': 'Udtræk'}.get(name, name) }}
+{%- endmacro %}
+
+{% macro source_period(source) -%}
+  {% if source.start_year and source.end_year -%}
+    {{ source.start_year }}{% if source.start_year != source.end_year %}–{{ source.end_year }}{% endif %}
+  {%- elif source.start_year -%}
+    Første år {{ source.start_year }}
+  {%- elif source.end_year -%}
+    Sidste år {{ source.end_year }}
+  {%- endif %}
+{%- endmacro %}
+
+{% macro source_fields(categories, source=none) -%}
+  {% if source is none %}<label>Sogn <input name="parish" required></label>{% endif %}
+  {% if not source or not source.archive %}<label>Arkiv <input name="archive"></label>{% endif %}
+  {% if not source or not source.district or not source.county %}
+  <div class="field-grid">
+    {% if not source or not source.district %}<label>Herred <input name="district"></label>{% endif %}
+    {% if not source or not source.county %}<label>Amt <input name="county"></label>{% endif %}
+  </div>
+  {% endif %}
+  {% if not source or not source.reference %}<label>Kirkebogsreference <input name="reference"></label>{% endif %}
+  {% if not source or not source.start_year or not source.end_year %}
+  <div class="field-grid">
+    {% if not source or not source.start_year %}<label>Første år <input name="start_year" type="number" min="1" max="{{ source.end_year if source and source.end_year else 9999 }}"></label>{% endif %}
+    {% if not source or not source.end_year %}<label>Sidste år <input name="end_year" type="number" min="{{ source.start_year if source and source.start_year else 1 }}" max="9999"></label>{% endif %}
+  </div>
+  {% endif %}
+  {% if not source or source.category == 'unknown' %}
+  <label>Type
+    <select name="category">
+      {% for choice in categories %}<option value="{{ choice }}"{% if choice == 'unknown' %} selected{% endif %}>{{ category(choice) }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  {% if not source or not source.url %}<label>Originalt arkivlink <input type="url" name="url"></label>{% endif %}
+  {% if not source or not source.license %}<label>Rettigheder eller licens <input name="license"></label>{% endif %}
+{%- endmacro %}

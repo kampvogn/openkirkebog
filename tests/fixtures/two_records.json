@@ -1,0 +1,44 @@
+{
+  "transcription": {
+    "category": "baptism",
+    "columns": ["Nummer", "Barnets navn", "Daabsdagen"],
+    "rows": [
+      {
+        "raw_text": "7. Jens Pedersen, døbt den 4de Mai 1872. Fader: Gaardmand Peder Jensen af Aaby.",
+        "cells": {"Nummer": "7", "Barnets navn": "Jens Pedersen", "Daabsdagen": "4de Mai 1872"},
+        "bbox": {"x": 0.045, "y": 0.17, "width": 0.9, "height": 0.18}
+      },
+      {
+        "raw_text": "8. [Kirsten?] Nielsdatter, døbt i Juni 1872.",
+        "uncertain_readings": ["[Kirsten?]"],
+        "cells": {"Nummer": "8", "Barnets navn": "[Kirsten?] Nielsdatter", "Daabsdagen": "i Juni 1872"},
+        "bbox": null
+      }
+    ]
+  },
+  "extraction": {
+    "entries": [
+      {
+        "row_index": 0,
+        "entry_number": "7",
+        "event_type": "baptism",
+        "event_date": "1872-05-04",
+        "event_date_original": "4de Mai 1872",
+        "persons": [
+          {"name_original": "Jens Pedersen", "name_normalized": "Jens Pedersen", "role": "child"},
+          {"name_original": "Peder Jensen", "name_normalized": "Peder Jensen", "role": "father",
+           "occupation": "Gaardmand", "residence": "Aaby"}
+        ],
+        "relationships": [{"subject_index": 1, "object_index": 0, "relationship_type": "father"}]
+      },
+      {
+        "row_index": 1,
+        "entry_number": "8",
+        "event_type": "baptism",
+        "event_date": "1872-06",
+        "event_date_original": "i Juni 1872",
+        "persons": [{"name_original": "[Kirsten?] Nielsdatter", "name_uncertain": true, "role": "child"}]
+      }
+    ]
+  }
+}

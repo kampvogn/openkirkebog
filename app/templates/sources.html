@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "macros.html" import category, source_fields, source_period %}
+{% block title %}Kirkebøger · OpenKirkebog{% endblock %}
+{% block content %}
+<header class="intro">
+  <h1>Kirkebøger</h1>
+  <p>Find en kilde, eller opret en kirkebog til dine skanninger.</p>
+</header>
+
+<div class="collection-layout">
+  <section aria-labelledby="source-list">
+    <h2 id="source-list">Samling</h2>
+    <form class="panel filter-form" action="/sources" method="get">
+      <label>Sogn <input name="q" value="{{ q or '' }}" placeholder="Fx Helligånds Sogn"></label>
+      <label>År <input name="year" type="number" min="1" max="9999" value="{{ year or '' }}"></label>
+      <label>Type
+        <select name="category">
+          <option value="">Alle typer</option>
+          {% for choice in categories %}<option value="{{ choice }}"{% if choice == request.query_params.get('category') %} selected{% endif %}>{{ category(choice) }}</option>{% endfor %}
+        </select>
+      </label>
+      <div class="actions"><button class="button primary">Filtrér</button><a class="button subtle" href="/sources">Nulstil</a></div>
+    </form>
+    <ul class="records">
+    {% for source in sources %}
+      <li class="record">
+        <div>
+          <h3><a href="/sources/{{ source.id }}">{{ source.parish }}</a></h3>
+          {% if source.archive or source.reference %}<p>{{ source.archive or source.reference }}{% if source.archive and source.reference %} · {{ source.reference }}{% endif %}</p>
+          {% else %}<p>Arkivoplysninger mangler</p>{% endif %}
+        </div>
+        <div class="record-meta"><span>{{ category(source.category) }}</span>{% if source.start_year or source.end_year %}<span>{{ source_period(source) }}</span>{% endif %}</div>
+      </li>
+    {% else %}
+      <li class="empty">{{ 'Ingen kirkebøger matcher filtrene.' if q or year or request.query_params.get('category') else 'Der er endnu ingen kirkebøger i samlingen.' }}</li>
+    {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel create-panel" aria-labelledby="new-source">
+    <h2 id="new-source">Opret kilde</h2>
+    <p class="metadata">Du kan oprette kilden med sogn alene og tilføje arkivoplysninger senere.</p>
+    <form class="stack" action="/sources" method="post">
+      {{ source_fields(categories) }}
+      <div><button class="button primary">Opret kilde</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

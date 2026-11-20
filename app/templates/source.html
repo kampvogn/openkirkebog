@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "macros.html" import category, source_fields, source_period, status %}
+{% block title %}{{ source.parish }} · OpenKirkebog{% endblock %}
+{% block content %}
+<a class="breadcrumb" href="/sources">Kirkebøger</a>
+<header class="intro">
+  <h1>{{ source.parish }}</h1>
+  {% set has_period = source.start_year or source.end_year %}
+  {% if source.reference or has_period %}
+  <p>{{ source.reference or '' }}{% if source.reference and has_period %} · {% endif %}{{ source_period(source) }}</p>
+  {% endif %}
+</header>
+
+<div class="collection-layout">
+  <section aria-labelledby="scans-title">
+    <h2 id="scans-title">Skannede sider</h2>
+    {% if pages %}
+    <form method="post" action="/jobs">
+      <div class="actions list-actions">
+        <button class="button primary">Behandl valgte sider</button>
+      </div>
+      <ul class="records">
+      {% for page in pages %}
+        {% set job = job_by_page.get(page.id) %}
+        <li class="record scan-record">
+          <label class="check"><input type="checkbox" name="page_ids" value="{{ page.id }}" aria-label="Vælg {{ page.filename }}"></label>
+          <span class="thumbnail"><img src="/pages/{{ page.id }}/thumbnail" alt="" loading="lazy"></span>
+          <div class="record-body">
+            <h3><a href="/pages/{{ page.id }}">{{ page.filename }}</a></h3>
+            {% if job and job.error %}<p class="failure">{{ job.error }}</p>{% endif %}
+          </div>
+          <div>
+            {% if job %}{{ status(job.state) }}
+            {% elif page.active_extraction_id %}{{ status('completed') }}
+            {% else %}{{ status('imported') }}{% endif %}
+          </div>
+        </li>
+      {% endfor %}
+      </ul>
+    </form>
+    {% else %}
+    <p class="empty">Importér en eller flere skanninger for at komme i gang.</p>
+    {% endif %}
+  </section>
+
+  <aside class="stack">
+    <section class="panel" aria-labelledby="import-title">
+      <h2 id="import-title">Importér billeder</h2>
+      <form class="stack" method="post" action="/sources/{{ source.id }}/pages" enctype="multipart/form-data">
+        <label>Billedfiler <input type="file" name="files" accept="image/*" multiple required></label>
+        <div><button class="button primary">Importér</button></div>
+      </form>
+    </section>
+    <section class="panel" aria-labelledby="details-title">
+      <h2 id="details-title">Kildeoplysninger</h2>
+      <dl class="details-list">
+        {% if source.archive %}<dt>Arkiv</dt><dd>{{ source.archive }}</dd>{% endif %}
+        <dt>Type</dt><dd>{{ category(source.category) }}</dd>
+        {% if source.district %}<dt>Herred</dt><dd>{{ source.district }}</dd>{% endif %}
+        {% if source.county %}<dt>Amt</dt><dd>{{ source.county }}</dd>{% endif %}
+        {% if source.license %}<dt>Rettigheder</dt><dd>{{ source.license }}</dd>{% endif %}
+        {% if source.identifiers %}{% for label, identifier in source.identifiers.items() %}<dt>{{ {'epid': 'EPID', 'book_id': 'Kirkebogs-ID', 'image_id': 'Billed-ID'}.get(label, label) }}</dt><dd>{{ identifier }}</dd>{% endfor %}{% endif %}
+        {% if source.imported_at %}<dt>Importeret</dt><dd>{{ source.imported_at.strftime('%Y-%m-%d') }}</dd>{% endif %}
+      </dl>
+      {% if source.url %}<a href="{{ source.url }}" rel="noreferrer noopener" target="_blank">Åbn i arkivet</a>{% endif %}
+      {% if not source.archive or not source.reference or not source.start_year or not source.end_year
+            or not source.url or not source.district or not source.county or not source.license or source.category == 'unknown' %}
+      <details class="fold">
+        <summary>Tilføj kildeoplysninger</summary>
+        <form class="stack" action="/sources/{{ source.id }}/complete" method="post">
+          {{ source_fields(categories, source) }}
+          <div><button class="button primary">Gem oplysninger</button></div>
+        </form>
+      </details>
+      {% endif %}
+    </section>
+  </aside>
+</div>
+{% endblock %}

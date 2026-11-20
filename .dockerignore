@@ -1,0 +1,17 @@
+.git
+.git-local
+.agents
+.codex
+.aws
+.env
+.env.*
+.venv
+.pytest_cache
+**/__pycache__
+**/*.pyc
+**/*.egg-info
+build
+dist
+data
+imports
+tests

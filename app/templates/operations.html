@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Drift · OpenKirkebog{% endblock %}
+
+{% macro available(value, suffix='') -%}
+  {% if value is not none and value is defined %}{{ value }}{{ suffix }}{% else %}<span class="muted">Ukendt</span>{% endif %}
+{%- endmacro %}
+
+{% block content %}
+<header class="intro">
+  <h1>Drift og AI-forbrug</h1>
+  <p>Behandling, gennemgang og AI-omkostninger for denne installation.</p>
+</header>
+<section aria-labelledby="progress-title">
+  <h2 id="progress-title">Behandling og gennemgang</h2>
+  <dl class="metrics">
+    {% for name, label in [
+      ('pages_imported', 'Importerede sider'), ('pages_processed', 'Behandlede sider'),
+      ('pages_successful', 'Sider med færdigt udtræk'), ('entries', 'Indførsler'),
+      ('entries_reviewed', 'Gennemgåede indførsler'), ('entries_verified', 'Verificerede indførsler'),
+      ('runs', 'Behandlingskørsler'), ('failures', 'Mislykkede kørsler'), ('retries', 'Genforsøg')
+    ] %}
+      <div class="metric"><dt>{{ label }}</dt><dd>{{ available(totals[name]) }}</dd></div>
+    {% endfor %}
+  </dl>
+</section>
+
+<section class="operations-section" aria-labelledby="timing-title">
+  <h2 id="timing-title">Behandlingstid</h2>
+  <div class="panel">
+    <dl class="details-list">
+      <dt>Målte kørsler</dt><dd>{{ available(totals.timed_runs) }}</dd>
+      <dt>Målte sider</dt><dd>{{ available(totals.pages_timed) }}</dd>
+      <dt>Samlet tid</dt><dd>{{ available(totals.processing_seconds, ' sek.') }}</dd>
+      <dt>Tid pr. målt side</dt><dd>{{ available(totals.seconds_per_processed_page, ' sek.') }}</dd>
+      <dt>Sider pr. målt behandlingstime</dt><dd>{{ available(totals.pages_per_processing_hour) }}</dd>
+    </dl>
+  </div>
+</section>
+
+<section class="operations-section" aria-labelledby="usage-title">
+  <div class="section-header">
+    <h2 id="usage-title">AI-omkostninger og tokenforbrug</h2>
+    <div class="actions">
+      <a class="button secondary" href="/operations/export/json" aria-label="Eksportér driftsdata som JSON">JSON</a>
+      <a class="button secondary" href="/operations/export/csv" aria-label="Eksportér driftsdata som CSV">CSV</a>
+    </div>
+  </div>
+  <p>Udgifterne omfatter AI-behandling. Hosting, lager, sikkerhedskopiering og trafik er udeladt.</p>
+  <p>{{ available(totals.missing_usage) }} afsluttede kørsler mangler oplysninger om tokenforbrug. {{ available(totals.missing_cost) }} afsluttede kørsler mangler prisoplysninger.</p>
+  {% if groups %}
+  <div class="table-scroll" tabindex="0" aria-label="AI-forbrug grupperet efter måned og model">
+    <table>
+      <thead><tr><th scope="col">Måned</th><th scope="col">Udbyder</th><th scope="col">Model</th><th scope="col">Prisgrundlag</th><th scope="col">Kørsler</th><th scope="col">Inputtokens</th><th scope="col">Outputtokens</th><th scope="col">Omkostning</th><th scope="col">Færdige sider</th><th scope="col">Pr. færdig side</th><th scope="col">Verificerede indførsler</th><th scope="col">Pr. verificeret indførsel</th></tr></thead>
+      <tbody>
+        {% for group in groups %}
+        <tr>
+          <td>{{ available(group.period) }}</td>
+          <td>{{ available(group.provider) }}</td>
+          <td>{{ available(group.model) }}</td>
+          <td>{{ {'reported': 'Oplyst af udbyder', 'provider_reported': 'Oplyst af udbyder', 'estimated': 'Beregnet estimat'}.get(group.cost_origin, group.cost_origin or 'Ukendt') }}</td>
+          <td>{{ available(group.runs) }}</td>
+          <td>{{ available(group.input_tokens) }}{% if group.input_tokens is not none and group.input_tokens_known_runs < group.runs %} <small>({{ group.input_tokens_known_runs }}/{{ group.runs }} kørsler)</small>{% endif %}</td>
+          <td>{{ available(group.output_tokens) }}{% if group.output_tokens is not none and group.output_tokens_known_runs < group.runs %} <small>({{ group.output_tokens_known_runs }}/{{ group.runs }} kørsler)</small>{% endif %}</td>
+          <td>{{ available(group.cost, ' ' ~ (group.currency or '')) }}</td>
+          <td>{{ available(group.successful_pages) }}</td>
+          <td>{{ available(group.average_cost_per_page, ' ' ~ (group.currency or '')) }}</td>
+          <td>{{ available(group.verified_entries) }}</td>
+          <td>{{ available(group.average_cost_per_verified_entry, ' ' ~ (group.currency or '')) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">Der er endnu ingen kørsler at vise.</p>
+  {% endif %}
+</section>
+{% endblock %}
